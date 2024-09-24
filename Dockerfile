@@ -1,7 +1,21 @@
+# Stage 1: Cargo Chef
 FROM lukemathwalker/cargo-chef:0.1.62-rust-bookworm as chef
 WORKDIR /app
 RUN apt update && apt install lld clang -y
 
+# Stage 2: Node and Tailwind setup
+FROM node:18-slim as node_builder
+WORKDIR /app
+# Copy package.json and package-lock.json (or yarn.lock)
+COPY ./package.json ./package-lock.json ./
+# Install Node.js dependencies for Tailwind CSS
+RUN npm install
+# Copy Tailwind and other frontend-related files
+COPY ./tailwind.config.js ./public ./
+# Build Tailwind CSS
+RUN npx tailwindcss -i ./public/tailwind.css -o ./public/styles.css --minify
+
+# Stage 3: Cargo Planner
 FROM chef as planner
 COPY . .
 # Compute a lock-like file for our project
@@ -31,7 +45,6 @@ RUN apt-get update -y \
 
 # Copy the compiled binary from the builder stage
 COPY --from=builder /app/target/release/server server
-
 
 # Copy the public folder from the builder stage
 COPY --from=builder /app/public /app/public
